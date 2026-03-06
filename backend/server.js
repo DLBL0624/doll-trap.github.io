@@ -33,6 +33,21 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'Backend is running' });
 });
 
+// Debug: check database schema (temporary - remove after confirming fix)
+app.get('/api/debug/schema', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT column_name, data_type, column_default
+      FROM information_schema.columns
+      WHERE table_name = 'photos'
+      ORDER BY ordinal_position
+    `);
+    res.json({ photos_columns: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Initialize database and start server
 const startServer = async () => {
   try {

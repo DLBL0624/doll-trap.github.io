@@ -44,17 +44,14 @@ const initDB = async () => {
     `);
 
     // Add category column if it doesn't exist (migration for existing databases)
-    try {
-      await pool.query(`
-        ALTER TABLE events ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'Live';
-      `);
-    } catch (e) {
-      console.error('Migration: events.category ADD COLUMN failed, retrying:', e.message);
-      try {
-        await pool.query(`ALTER TABLE events ADD COLUMN category VARCHAR(100) DEFAULT 'Live';`);
-      } catch (e2) {
-        // Column already exists, safe to ignore
-      }
+    const evtCatCheck = await pool.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'events' AND column_name = 'category'
+    `);
+    if (evtCatCheck.rows.length === 0) {
+      console.log('Adding missing category column to events table...');
+      await pool.query(`ALTER TABLE events ADD COLUMN category VARCHAR(100) DEFAULT 'Live'`);
+      console.log('✅ events.category column added');
     }
 
     // Photos table
@@ -72,37 +69,27 @@ const initDB = async () => {
     `);
     
     // Add category column if it doesn't exist (migration for existing databases)
-    try {
-      await pool.query(`
-        ALTER TABLE photos ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'Performance';
-      `);
-    } catch (e) {
-      console.error('Migration: photos.category ADD COLUMN failed, retrying without IF NOT EXISTS:', e.message);
-      try {
-        await pool.query(`ALTER TABLE photos ADD COLUMN category VARCHAR(100) DEFAULT 'Performance';`);
-      } catch (e2) {
-        // Column already exists, safe to ignore
-      }
-    }
-
-    // Verify category column exists
-    const categoryCheck = await pool.query(`
+    const photoCatCheck = await pool.query(`
       SELECT column_name FROM information_schema.columns
       WHERE table_name = 'photos' AND column_name = 'category'
     `);
-    if (categoryCheck.rows.length === 0) {
-      console.error('❌ CRITICAL: photos.category column still missing after migration!');
+    if (photoCatCheck.rows.length === 0) {
+      console.log('Adding missing category column to photos table...');
+      await pool.query(`ALTER TABLE photos ADD COLUMN category VARCHAR(100) DEFAULT 'Performance'`);
+      console.log('✅ photos.category column added');
     } else {
-      console.log('✅ photos.category column verified');
+      console.log('✅ photos.category column already exists');
     }
     
     // Add member_tag column if it doesn't exist (migration for existing databases)
-    try {
-      await pool.query(`
-        ALTER TABLE photos ADD COLUMN IF NOT EXISTS member_tag VARCHAR(100);
-      `);
-    } catch (e) {
-      // Column might already exist, continue
+    const memberTagCheck = await pool.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'photos' AND column_name = 'member_tag'
+    `);
+    if (memberTagCheck.rows.length === 0) {
+      console.log('Adding missing member_tag column to photos table...');
+      await pool.query(`ALTER TABLE photos ADD COLUMN member_tag VARCHAR(100)`);
+      console.log('✅ photos.member_tag column added');
     }
 
     // Future: Game features tables
