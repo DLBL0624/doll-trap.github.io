@@ -81,13 +81,18 @@ router.post('/', authMiddleware, upload.single('photo'), async (req, res) => {
 
     if (error) {
       console.error('Supabase upload error:', error);
-      return res.status(500).json({ error: 'Failed to upload file to storage' });
+      if (error.message && error.message.includes('not found')) {
+        return res.status(500).json({ error: 'Storage bucket not found. Please create "doll-trap" bucket in Supabase.' });
+      }
+      return res.status(500).json({ error: error.message || 'Failed to upload file to storage' });
     }
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('doll-trap')
       .getPublicUrl(filePath);
+
+    console.log('Uploaded to Supabase:', publicUrl);
 
     // Save to database
     const result = await pool.query(
